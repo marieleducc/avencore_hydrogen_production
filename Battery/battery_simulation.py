@@ -6,11 +6,11 @@ import pyomo.environ as pyo
 
 @dataclass
 class BatteryParams:
-    CHARGE_YIELD: float = 1.0
-    DISCHARGE_YIELD: float = 1.0 
-    dt: float = 1.0
-    SOC_MIN: float = 0.1
-    SOC_MAX: float = 0.95
+    CHARGE_YIELD: float = 1.0    #Charge yield of the battery (value bewteen 0.0 and 1.0)
+    DISCHARGE_YIELD: float = 1.0 #Discharge yield of the battery (value between 0.0 and 1.0)
+    dt: float = 1.0              #Timestep of the battery simulation (hours)
+    SOC_MIN: float = 0.1         #Minimal percentage of the SoC that can reach the battery (value between 0.0 and 1.0)
+    SOC_MAX: float = 0.95        #Maximum percentage of the SoC that can reach the battery (value between 0.0 and 1.0)
 
 class BatteryBlock:
     """
@@ -31,11 +31,11 @@ class BatteryBlock:
         """
         m = self.m
         if not hasattr(m, 'PWR_CHARGE'):
-            m.PWR_CHARGE  = pyo.Var(self.T, domain=pyo.NonNegativeReals)
+            m.PWR_CHARGE  = pyo.Var(self.T, domain=pyo.NonNegativeReals)   #Instant power that delivers the battery (MW)
         if not hasattr(m, 'PWR_DISCHARGE'):
-            m.PWR_DISCHARGE = pyo.Var(self.T, domain=pyo.NonNegativeReals)
+            m.PWR_DISCHARGE = pyo.Var(self.T, domain=pyo.NonNegativeReals) #Instant power that delivers the battery (MW)
         if not hasattr(m, 'SOC'):
-            m.SOC   = pyo.Var(self.T, domain=pyo.NonNegativeReals)
+            m.SOC   = pyo.Var(self.T, domain=pyo.NonNegativeReals)         #Actual SoC of the battery (MWh)
 
     def add_constraints(self):
         """

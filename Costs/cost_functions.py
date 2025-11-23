@@ -6,11 +6,11 @@ import pyomo.environ as pyo
 
 @dataclass
 class EconomicParams:
-    ELECTROLYSER_CAPEX: float = 700_000.0 # €/MW_el
-    CAPEX_PWR_BAT: float = 150.0 # €/MW
-    CAPEX_EN_BAT: float = 10_000.0 # €/MWh
-    FORWARD_PRICE: float = 75.0 # €/MWh
-    CO2_COST: float = 80.0 # €/tCO2
+    ELECTROLYSER_CAPEX: float = 700_000.0                   # €/MW_el
+    CAPEX_PWR_BAT: float = 150_000.0                        # €/MW
+    CAPEX_EN_BAT: float = 100_000.0                         # €/MWh
+    FORWARD_PRICE: float = 75_000.0                         # €/MWh
+    CO2_COST: float = 80.0                                  # €/tCO2
     ALPHA: float = 0.07 * (1+0.07)**15 / ((1+0.07)**15 - 1) # Annuity (r=7%, N=15)
 
 class ObjectiveBuilder:
@@ -21,10 +21,10 @@ class ObjectiveBuilder:
         self.m = m
         self.T = T_set
         self.ECON_PARA = ECON_PARA
-        self.ELEC_PRICE = ELEC_PRICE
-        self.CO2_INTENSITY = CO2_INTENSITY
-        self.dt = dt
-        self.include_co2 = include_co2
+        self.ELEC_PRICE = ELEC_PRICE            # Time-series of spot market electricity prices (€/MWh)
+        self.CO2_INTENSITY = CO2_INTENSITY      # Time-series of grid carbon intensity (tCO2/MWh)
+        self.dt = dt                            # Timestep of the simulation (hours)
+        self.include_co2 = include_co2          # Boolean flag to include carbon costs in the objective function
 
     def capex_annual(self):
         m, e = self.m, self.ECON_PARA

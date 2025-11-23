@@ -6,18 +6,18 @@ import pyomo.environ as pyo
 
 @dataclass
 class ElectrolyserParams:
-    PWR_H2_MAX: float = 100.0
-    U_ELECTRO_MIN: float = 0.10
-    U_ELECTRO_MAX: float = 0.95
-    RAMP_ELECTRO: float = 1.0
-    ELECTRO_YIELD: float = 0.70
-    LHV_H2: float = 55.0
-    dt: float = 1.0
-    H2_TARGET: float = 1_000_000.0
+    PWR_H2_MAX: float = 100.0       # Nominal power that can deliver the electrolyzer (MW)
+    U_ELECTRO_MIN: float = 0.10     # Minimum load factor constraint (value between 0.0 and 1.0)
+    U_ELECTRO_MAX: float = 0.95     # Maximum load factor constraint (value between 0.0 and 1.0)
+    RAMP_ELECTRO: float = 1.0       # Maximum power ramp up/down allowed per timestep (MW/dt)
+    ELECTRO_YIELD: float = 0.70     # Electrical efficiency of the electrolyser (value between 0.0 and 1.0)
+    LHV_H2: float = 55.0            # Lower Heating Value of Hydrogen used for conversion (kWh/kg)
+    dt: float = 1.0                 # Timestep of the electrolyzer simulation (hours)
+    H2_TARGET: float = 1_000_000.0  # Annual target for Hydrogen production (kg)
 
 @dataclass
 class MarketParams:
-    FORWARD_PRICE: float = 75.0
+    FORWARD_PRICE: float = 75.0     #Price of the forward electricity contract (€/MWh)
 
 class ElectrolyserBlock:
     """
@@ -36,9 +36,9 @@ class ElectrolyserBlock:
     def add_variables(self):
         m = self.m
         if not hasattr(m, 'PWR_H2'):
-            m.PWR_H2 = pyo.Var(self.T, domain=pyo.NonNegativeReals)
+            m.PWR_H2 = pyo.Var(self.T, domain=pyo.NonNegativeReals) # Power consumption of the electrolyser (MW)
         if not hasattr(m, 'H2'):
-            m.H2 = pyo.Var(self.T, domain=pyo.NonNegativeReals)
+            m.H2 = pyo.Var(self.T, domain=pyo.NonNegativeReals)     # Hydrogen production mass (kg)
     
     # Constraints definition
     def add_constraints(self):
