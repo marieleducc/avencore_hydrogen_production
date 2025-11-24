@@ -32,8 +32,8 @@ model.E_bat_max = pyo.Var(domain=pyo.NonNegativeReals)  # Capacité énergétiqu
 
 
 # ---- Variables opérationnelles ----
-# model.P_spot = pyo.Var(model.T, domain=pyo.NonNegativeReals)   # Puissance tirée au prix spot (Achat Uniquement)
-model.P_spot = pyo.Var(model.T, domain=pyo.Reals)  # Achat Autoriser
+# model.P_spot = pyo.Var(model.T, domain=pyo.NonNegativeReals)  # Puissance tirée au prix spot (Achat Uniquement)
+model.P_spot = pyo.Var(model.T, domain=pyo.Reals)               # Achat Autoriser
 
 model.P_ch   = pyo.Var(model.T, domain=pyo.NonNegativeReals)    # Puissance de charge de la batterie
 model.P_dis  = pyo.Var(model.T, domain=pyo.NonNegativeReals)    # Puissance de décharge de la batterie
