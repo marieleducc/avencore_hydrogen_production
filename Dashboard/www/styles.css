@@ -1,0 +1,143 @@
+/* ----CSS Module for the definition of the style of the dashboard----*/
+
+/* =====Brand variables===== */
+:root{
+  --brand: #0F6E6E;
+  --brand-200: #169191; 
+  --brand-50: rgba(15, 110, 110, 0.25); 
+  --ink: #0E0E0E;
+  --muted: #666A6D;
+}
+
+/*Not showing progress bars for file inputs*/
+.shiny-file-input-progress { display: none; }
+
+/*Sliders*/
+.irs.irs--shiny .irs-single,
+.irs.irs--shiny .irs-bar-edge,
+.irs.irs--shiny .irs-bar,
+.irs.irs--shiny .irs-handle { background: var(--brand); }
+
+.irs.irs--shiny .irs-handle:hover,
+.irs.irs--shiny .irs-handle:active { background: var(--muted); }
+
+.irs.irs--shiny .irs-line::before{ cursor: pointer; }
+.irs.irs--shiny .irs-bar{ cursor: pointer; }
+
+.irs.irs--shiny .irs-handle:active {
+  box-shadow: 0 0 0 0.25rem var(--brand-50);
+}
+
+/* Active dropdown */
+.dropdown-menu>li>a.active,
+.dropdown-menu>li>a:active {
+  background: var(--brand-200);
+  color: #fff;
+}
+
+/*Checkboxes / Radio*/
+.shiny-input-container .checkbox input:checked,
+.shiny-input-container .radio-inline input:checked,
+.shiny-input-container .form-check input:checked {
+  background-color: var(--brand);
+  border-color: var(--brand);
+}
+
+.shiny-input-container .checkbox input:focus,
+.shiny-input-container .radio-inline input:focus,
+.shiny-input-container .form-check input:focus {
+  box-shadow: 0 0 0 0.25rem var(--brand-50);
+  border-color: var(--brand);
+}
+
+/*Switches*/
+.form-switch .form-check-input:focus {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280,0,0,0.25%29'/%3e%3c/svg%3e");
+}
+.form-switch .form-check-input:checked {
+  background-position: right center;
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+}
+
+/*Selectise focus*/
+.shiny-input-select .selectize-input.focus {
+  border-color: var(--brand);
+  box-shadow:
+    inset 0 1px 1px rgba(0,0,0,0.075),
+    0 0 8px rgba(15,110,110,0.5);
+}
+
+/*Accordions*/
+.accordion .accordion-button:not(.collapsed):focus{
+  background-color: var(--brand-200);
+  box-shadow: 0 0 0 0.25rem var(--brand-50);
+}
+.accordion-button.collapsed:focus{ box-shadow: none; }
+
+/*Progress bar*/
+.progress-bar{ background-color: var(--brand); }
+
+/*Data grid alignement*/
+.shiny-data-grid.shiny-data-grid-grid > table > thead > tr > th,
+.shiny-data-grid.shiny-data-grid-grid > table > tbody > tr > td { text-align: center; }
+
+/*Nav links*/
+.nav-underline .nav-link:hover,
+.nav-underline .nav-link.active { color: var(--brand); }
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active { color: var(--ink); }
+
+/*Selectize items*/
+.selectize-control.multi .selectize-input>div.active{
+  background-color: var(--brand);
+  color: #fff;
+}
+.selectize-dropdown-content .option.selected{
+  background-color: var(--brand);
+  color: #fff;
+}
+
+/*Inputs focus*/
+.form-select:focus,
+.shiny-input-number:focus,
+.form-control:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 .25rem var(--brand-50);
+}
+
+/*Brand and links*/
+.navbar-brand, .navbar-brand:hover { color: var(--ink); }
+.nav-link { color: var(--ink); }
+
+.link { color: var(--ink); }
+.link:hover { color: var(--brand); }
+
+/*Group titles*/
+#check_di_dtpv_step_checkbox_grp-label,  
+#internal_validation_mail_step_checkbox_grp-label, 
+#internal_validation_step_checkbox_grp-label, 
+#broker_validation_mail_step_checkbox_grp-label, 
+#ao_reception_step_checkbox_grp-label, 
+#def_pack_reception_step_checkbox_grp-label,
+#updated_owner_radio_button-label,
+#updated_status_radio_button-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/*Police*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+body { font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif; }
+
+/*Error messages*/
+.error-message {
+  color: #B91C1C;
+  font-weight: bold;
+  font-size: 16px;
+  background-color: #FEE2E2;
+  border: 2px solid #DC2626;
+  padding: 8px;
+  border-radius: 5px;
+  display: inline-block;
+}

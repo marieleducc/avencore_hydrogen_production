@@ -1,35 +1,22 @@
-"""File to use the data base"""
-
-from __future__ import annotations
+"""Definition of functions for the loading and cleaning of the dataset"""
 import pandas as pd
-import numpy as np
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PATH = PROJECT_ROOT / "Data" / "data.csv"
 
-def load_prices(path_csv: str, year: int = 2024, sep: str = ';', encoding: str = 'utf-8'):
-    """
-    Function to directly get the prices from prix_spot.csv
-    
-    -----------------------------------------------------
-    Inputs : 
-    path_csv : str path to the price file
-    
-    -----------------------------------------------------
-    Outputs : 
-    ELEC_PRICE: np.ndarray, table of the spot prices of electricity
-    co2: np.ndarray, table of the same size as the spot prices of electricity, constant here
-    T: int, length of the series, will help define the temporality for the optimisation
-    df_y: pd.DataFrame, subset of the original dataset, filtered for the year 2024
-    
-    """
+def loading_function(path: str = PATH):
+    df = pd.read_csv(path, sep=',')
 
-    df = pd.read_csv(path_csv, sep=sep, encoding=encoding)
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
 
-    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+    serie_spot = df['Spot_Price']
+    serie_int = df['CO2_Intensity']
 
-    df_y = df[df['Date'].dt.year == year].copy()
-    
-    ELEC_PRICE = df_y['Spot'].to_numpy()
-    T = len(ELEC_PRICE)
+    T = len(df)
+    print(f"La nouvelle longueur des deux séries après fusion est T = {T} heures.")
 
-    CO2_INTENSITY = np.full(T, 0.25, dtype=float)
+    price_elec = serie_spot.to_numpy()
+    intensity_elec  = serie_int.to_numpy()
+    return price_elec, intensity_elec, T, df
 
-    return ELEC_PRICE, CO2_INTENSITY, T, df_y
+price_elec, intensity_elec, T, df = loading_function(PATH)

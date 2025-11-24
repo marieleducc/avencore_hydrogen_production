@@ -1,74 +1,51 @@
-"""Code for the simulation and functionning of the BESS"""
-
-from __future__ import annotations
-from dataclasses import dataclass
+"""Function definition for the boundaries of BESS"""
 import pyomo.environ as pyo
+from Data.constants import *
+from Data.loading import *
 
-@dataclass
-class BatteryParams:
-    CHARGE_YIELD: float = 1.0
-    DISCHARGE_YIELD: float = 1.0 
-    dt: float = 1.0
-    SOC_MIN: float = 0.1
-    SOC_MAX: float = 0.95
+def soc_dyn_rule(m, t):
+    if t == T-1:
+        # dynamique de 0..T-1, on peut soit faire cyclique, soit ignorer le dernier pas
+        return pyo.Constraint.Skip
+    return m.SOC[t+1] == m.SOC[t] + eta_ch * m.P_ch[t] * dt - eta_dis * m.P_dis[t] * dt
 
-class BatteryBlock:
-    """
-    Declares the variables linked to the BESS, and adds constraints : 
-    - Dynamic SOC
-    - SOC's bounds
-    - Power limits (charge/discharge)
+# model.SOCdyn = pyo.Constraint(model.T, rule=soc_dyn_rule)
 
-    """
-    def __init__(self, m: pyo.ConcreteModel, T_set, params: BatteryParams):
-        self.m = m
-        self.T = T_set
-        self.p = params
 
-    def add_variables(self):
-        """
-        Function to add the operational variables for the BESS
-        """
-        m = self.m
-        if not hasattr(m, 'PWR_CHARGE'):
-            m.PWR_CHARGE  = pyo.Var(self.T, domain=pyo.NonNegativeReals)
-        if not hasattr(m, 'PWR_DISCHARGE'):
-            m.PWR_DISCHARGE = pyo.Var(self.T, domain=pyo.NonNegativeReals)
-        if not hasattr(m, 'SOC'):
-            m.SOC   = pyo.Var(self.T, domain=pyo.NonNegativeReals)
+# --- 3.3 Batterie : bornes SOC ---
+def soc_lower_bound_rule(m, t):
+    return m.SOC[t] >= SOC_min * m.E_bat_max
+# model.SOCLowerBound = pyo.Constraint(model.T, rule=soc_lower_bound_rule)
 
-    def add_constraints(self):
-        """
-        Definition of the constraints for the BESS
-        """
-        m, p, T = self.m, self.p, list(self.T)
+def soc_upper_bound_rule(m, t):
+    return m.SOC[t] <= SOC_max * m.E_bat_max
+# model.SOCUpperBound = pyo.Constraint(model.T, rule=soc_upper_bound_rule)
 
-        # Dynamic SOC
-        def soc_dyn_rule(m, t):
-            if t == T[-1]:
-                return pyo.Constraint.Skip
-            return m.SOC[t+1] == m.SOC[t] + p.CHARGE_YIELD*m.PWR_CHARGE[t]*p.dt - (1.0/p.DISCHARGE_YIELD)*m.PWR_DISCHARGE[t]*p.dt
-        m.SOCdyn = pyo.Constraint(self.T, rule=soc_dyn_rule)
 
-        # SOC's bounds
-        def soc_lower_bound_rule(m, t):
-            return m.SOC[t] >= p.SOC_MIN * m.EN_BAT_MAX
-        m.SOCLowerBound = pyo.Constraint(self.T, rule=soc_lower_bound_rule)
+# --- 3.4 Batterie : puissance max charge / décharge ---
+def p_ch_limit_rule(m, t):
+    return m.P_ch[t] <= m.P_bat_max
+# model.PchLimit = pyo.Constraint(model.T, rule=p_ch_limit_rule)
 
-        def soc_upper_bound_rule(m, t):
-            return m.SOC[t] <= p.SOC_MAX * m.EN_BAT_MAX
-        m.SOCUpperBound = pyo.Constraint(self.T, rule=soc_upper_bound_rule)
+def p_dis_limit_rule(m, t):
+    return m.P_dis[t] <= m.P_bat_max
+# model.PdisLimit = pyo.Constraint(model.T, rule=p_dis_limit_rule)
 
-        # Power constraints
-        def pwr_charge_limit_rule(m, t):
-            return m.PWR_CHARGE[t] <= m.PWR_BAT_MAX
-        m.PchLimit = pyo.Constraint(self.T, rule=pwr_charge_limit_rule)
 
-        def pwr_discharge_limit_rule(m, t):
-            return m.PWR_DISCHARGE[t] <= m.PWR_BAT_MAX
-        m.PdisLimit = pyo.Constraint(self.T, rule=pwr_discharge_limit_rule)
+# --- 3.5 Batterie : limite de la puissance et de la capacité de la batterie ---
+def p_bat_max(m):
+    return m.P_bat_max <= P_electro_max
+# model.PbatMax = pyo.Constraint(rule=p_bat_max)
 
-        # Cycle condition
-        def soc_cycle_rule(m):
-            return m.SOC[T[0]] == m.SOC[T[-1]]
-        m.SOCCycle = pyo.Constraint(rule=soc_cycle_rule)
+def e_bat_max(m):
+    return m.E_bat_max <= 300
+# model.EbatMax = pyo.Constraint(rule=e_bat_max)
+
+# --- 3.1 Bilan de puissance ---
+
+def power_balance_rule(m, t):
+    return m.P_spot[t] == m.P_electro[t] + m.P_ch[t] - m.P_dis[t]
+    # return m.P_spot[t] + phi * P_electro_max == m.P_electro[t] + m.P_ch[t] - m.P_dis[t]
+# model.PowerBalance = pyo.Constraint(model.T, rule=power_balance_rule)
+
+
