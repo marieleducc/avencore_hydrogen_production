@@ -11,7 +11,6 @@ def soc_dyn_rule(m, t):
 
 # model.SOCdyn = pyo.Constraint(model.T, rule=soc_dyn_rule)
 
-# todo joseph blabla
 
 # --- 3.3 Batterie : bornes SOC ---
 def soc_lower_bound_rule(m, t):
