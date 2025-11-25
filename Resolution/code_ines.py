@@ -17,56 +17,41 @@ if str(PROJECT_ROOT) not in sys.path:
 import random
 import numpy as np
 import pyomo.environ as pyo
-
-# ========= PARAMÈTRES TECHNO-ÉCO (à ajuster à ton cas) =========
  
-# Batterie
-CAPEX_PWR_BAT = 150.0      # €/kW (ou €/MW, à homogénéiser)
+# ---------- PARAMÈTRES GLOBAUX (à garder cohérents) ----------
+ 
+CAPEX_PWR_BAT = 150.0      # €/kW ou €/MW selon tes unités (reste cohérente)
 CAPEX_EN_BAT = 10_000.0    # €/MWh
-r = 0.07                   # taux d'actualisation
-N_years = 15               # durée de vie
-ALPHA = r * (1 + r) ** N_years / ((1 + r) ** N_years - 1)  # facteur d'annuité
+r = 0.07
+N_years = 15
+ALPHA = r * (1 + r) ** N_years / ((1 + r) ** N_years - 1)
  
 # Électrolyseur
-P_ELECTRO_MAX = 100.0      # MW
+ELECTRO_MAX_PWR = 100.0      # MW (reste sur un ordre de grandeur réaliste)
 U_ELECTRO_MAX = 0.95
-RAMP_ELECTRO = 10.0        # MW par pas
-ELECTRO_YIELD = 0.70       # rendement global
+RAMP_ELECTRO = 10.0        # MW/step
+ELECTRO_YIELD = 0.70
 LHV_H2 = 55.0              # kWh/kg
-H2_TARGET = 1_000_000.0    # kg sur l'horizon
+DT = 1.0                   # **1 heure par pas de temps, surtout pas 8760 !**
  
-# Batterie – techno
 SOC_MIN = 0.10
 SOC_MAX = 0.95
-ETA_CH = 1.0
-ETA_DIS = 1.0
-DT = 1.0                   # h
+CHARGE_YIELD = 1.0
+DISCHARGE_YIELD = 1.0
  
- 
-# ========= 1. PROBLÈME LOCAL (Pyomo) =========
  
 def local_cost(P_bat_max: float, E_bat_max: float, elec_price) -> float:
     """
-    Problème local de dispatch sur l'horizon :
-      - variables : P_spot[t], P_electro[t], P_ch[t], P_dis[t], SOC[t], H2[t]
-      - contraintes : électrolyseur, batterie, bilan de puissance, H2 cible
-      - objectif : CAPEX annuel batterie + coût d'électricité
+    Problème local : pour un dimensionnement (P_bat_max, E_bat_max),
+    on résout l’optimisation d’exploitation et on renvoie :
+        coût = CAPEX_annuel_batterie + coût électricité
  
-    Paramètres
-    ----------
-    P_bat_max : float
-        Puissance nominale de la batterie [MW].
-    E_bat_max : float
-        Capacité énergétique de la batterie [MWh].
-    elec_price : dict ou array-like
-        Prix de l'électricité par pas de temps (€/MWh).
- 
-    Retour
-    ------
-    float : coût total (CAPEX annuel + coût élec),
-            ou une grosse pénalité si le modèle est infaisable.
+    Pour stabiliser :
+    - dt = 1 h
+    - H2_TARGET calculé de façon cohérente avec la puissance max
     """
-    # --- Série temporelle ---
+ 
+    # 0) Série temporelle & prix
     if isinstance(elec_price, dict):
         T_list = sorted(elec_price.keys())
         price = {t: float(elec_price[t]) for t in T_list}
@@ -74,62 +59,78 @@ def local_cost(P_bat_max: float, E_bat_max: float, elec_price) -> float:
         T_list = list(range(len(elec_price)))
         price = {t: float(elec_price[t]) for t in T_list}
  
+    nb_h = len(T_list)
+ 
+    # 1) H₂ TARGET COHÉRENT
+    # production max théorique sur l’horizon :
+    # ELECTRO_MAX_PWR [MW] * U_ELECTRO_MAX * nb_h [h] * 1000 / LHV [kWh/kg]
+    h2_max_theorique = (
+        ELECTRO_YIELD * U_ELECTRO_MAX * ELECTRO_MAX_PWR * nb_h * DT * 1000.0 / LHV_H2
+    )
+    # on demande par ex. 80 % de cette valeur, pour que ce soit faisable
+    H2_TARGET = 0.8 * h2_max_theorique
+ 
     m = pyo.ConcreteModel()
     m.T = pyo.Set(initialize=T_list)
     T = T_list
  
-    # --- Variables de dimensionnement (fixées) ---
+    # 2) Variables de dimensionnement, fixées par le GA
     m.P_bat_max = pyo.Var(domain=pyo.NonNegativeReals)
     m.E_bat_max = pyo.Var(domain=pyo.NonNegativeReals)
     m.P_bat_max.fix(P_bat_max)
     m.E_bat_max.fix(E_bat_max)
  
-    # --- Variables opérationnelles ---
-    m.P_spot = pyo.Var(m.T, domain=pyo.Reals)            # achat/vente possible
+    # 3) Variables opérationnelles
+    m.P_spot = pyo.Var(m.T, domain=pyo.Reals)
     m.P_electro = pyo.Var(m.T, domain=pyo.NonNegativeReals)
     m.P_ch = pyo.Var(m.T, domain=pyo.NonNegativeReals)
     m.P_dis = pyo.Var(m.T, domain=pyo.NonNegativeReals)
     m.SOC = pyo.Var(m.T, domain=pyo.NonNegativeReals)
     m.H2 = pyo.Var(m.T, domain=pyo.NonNegativeReals)
  
-    # ---------- Contraintes électrolyseur ----------
+    # ---------- ÉLECTROLYSEUR ----------
  
+    # borne max
     def el_max_rule(m, t):
-        return m.P_electro[t] <= U_ELECTRO_MAX * P_ELECTRO_MAX
+        return m.P_electro[t] <= U_ELECTRO_MAX * ELECTRO_MAX_PWR
     m.ElMax = pyo.Constraint(m.T, rule=el_max_rule)
  
+    # rampes
     def el_ramp_rule(m, t):
         if t == T[0]:
             return pyo.Constraint.Skip
         return pyo.inequality(
             -RAMP_ELECTRO,
             m.P_electro[t] - m.P_electro[t - 1],
-            RAMP_ELECTRO
+            RAMP_ELECTRO,
         )
     m.ElRamp = pyo.Constraint(m.T, rule=el_ramp_rule)
  
+    # production H2
     def h2_prod_rule(m, t):
-        # H2 [kg] = rendement * P (MW) * dt (h) * 1000 / LHV (kWh/kg)
+        # H2 [kg] = η * P [MW] * dt [h] * 1000 / LHV [kWh/kg]
         return m.H2[t] == ELECTRO_YIELD * m.P_electro[t] * DT * 1000.0 / LHV_H2
     m.H2Prod = pyo.Constraint(m.T, rule=h2_prod_rule)
  
+    # cible H2 réaliste
     def h2_target_rule(m):
         return sum(m.H2[t] for t in m.T) >= H2_TARGET
     m.H2Target = pyo.Constraint(rule=h2_target_rule)
  
-    # ---------- Batterie : dynamique SOC ----------
+    # ---------- BATTERIE ----------
  
+    # dynamique SOC
     def soc_dyn_rule(m, t):
         if t == T[-1]:
             return pyo.Constraint.Skip
         return m.SOC[t + 1] == (
             m.SOC[t]
-            + ETA_CH * m.P_ch[t] * DT
-            - (1.0 / ETA_DIS) * m.P_dis[t] * DT
+            + CHARGE_YIELD * m.P_ch[t] * DT
+            - (1.0 / DISCHARGE_YIELD) * m.P_dis[t] * DT
         )
     m.SOCDyn = pyo.Constraint(m.T, rule=soc_dyn_rule)
  
-    # Bornes SOC
+    # SOC min / max
     def soc_min_rule(m, t):
         return m.SOC[t] >= SOC_MIN * m.E_bat_max
     m.SOCMin = pyo.Constraint(m.T, rule=soc_min_rule)
@@ -138,7 +139,7 @@ def local_cost(P_bat_max: float, E_bat_max: float, elec_price) -> float:
         return m.SOC[t] <= SOC_MAX * m.E_bat_max
     m.SOCMax = pyo.Constraint(m.T, rule=soc_max_rule)
  
-    # Puissance batterie
+    # P_ch, P_dis bornés par P_bat_max
     def p_ch_lim_rule(m, t):
         return m.P_ch[t] <= m.P_bat_max
     m.PchLim = pyo.Constraint(m.T, rule=p_ch_lim_rule)
@@ -147,44 +148,44 @@ def local_cost(P_bat_max: float, E_bat_max: float, elec_price) -> float:
         return m.P_dis[t] <= m.P_bat_max
     m.PdisLim = pyo.Constraint(m.T, rule=p_dis_lim_rule)
  
-    # Cycle de SOC
+    # cycle SOC
     def soc_cycle_rule(m):
         return m.SOC[T[0]] == m.SOC[T[-1]]
     m.SOCCycle = pyo.Constraint(rule=soc_cycle_rule)
  
-    # ---------- Bilan de puissance ----------
+    # ---------- BILAN DE PUISSANCE ----------
     def power_balance_rule(m, t):
-        # P_spot = P_electro + P_ch - P_dis
         return m.P_spot[t] == m.P_electro[t] + m.P_ch[t] - m.P_dis[t]
     m.PowerBalance = pyo.Constraint(m.T, rule=power_balance_rule)
  
-    # ---------- Objectif ----------
+    # ---------- OBJECTIF ----------
     capex_annuel = ALPHA * (
         CAPEX_PWR_BAT * m.P_bat_max + CAPEX_EN_BAT * m.E_bat_max
     )
     cout_elec = sum(price[t] * m.P_spot[t] * DT for t in m.T)
- 
     m.Obj = pyo.Objective(expr=capex_annuel + cout_elec, sense=pyo.minimize)
  
-    # ---------- Résolution ----------
+    # ---------- RÉSOLUTION ----------
     solver = pyo.SolverFactory("glpk")
     try:
         res = solver.solve(m, tee=False)
     except Exception:
-        # si le solveur plante, on renvoie une grosse pénalité
-        return 1e15
+        return 1e15  # plantage solveur = grosse pénalité
  
     term = res.solver.termination_condition
     if term not in (
         pyo.TerminationCondition.optimal,
         pyo.TerminationCondition.locallyOptimal,
     ):
-        # infaisable, non convergé, etc. → pénalité
+        # infaisable, non convergé → pénalité
         return 1e14
  
+    # Si tu veux vérifier que H2 est dans des ordres raisonnables :
+    # total_h2 = sum(pyo.value(m.H2[t]) for t in m.T)
+    # print("Total H2 produit :", total_h2)
+ 
     return pyo.value(m.Obj)
- 
- 
+
 # ========= 2. FITNESS POUR LE GA =========
  
 def fitness(candidate, elec_price):
@@ -235,9 +236,9 @@ def genetic_algorithm(
     def crossover(p1, p2):
         if random.random() > p_crossover:
             return p1[:], p2[:]
-        alpha = random.random()
-        c1 = [alpha * p1[i] + (1 - alpha) * p2[i] for i in range(n_vars)]
-        c2 = [(1 - alpha) * p1[i] + alpha * p2[i] for i in range(n_vars)]
+        ALPHA = random.random()
+        c1 = [ALPHA * p1[i] + (1 - ALPHA) * p2[i] for i in range(n_vars)]
+        c2 = [(1 - ALPHA) * p1[i] + ALPHA * p2[i] for i in range(n_vars)]
         return c1, c2
  
     # Mutation
@@ -283,64 +284,31 @@ def genetic_algorithm(
  
  
 # ========= 4. EXEMPLE D'UTILISATION =========
+ 
 if __name__ == "__main__":
-
-    import pandas as pd
+    # Exemple : série de prix sur 24h (sinusoïde)
+    N = 24
+    elec_price = {
+        t: 50.0 + 20.0 * np.sin(2 * np.pi * t / 24.0) for t in range(N)
+    }
  
-    # 1) Charger le fichier de données
-
-    # adapte le chemin si besoin (par ex. "./Data/data.csv" ou "../Data/data.csv")
-
-    PATH = PROJECT_ROOT / "Data" / "data.csv"
-
-    df = pd.read_csv(PATH)
- 
-    # 2) Récupérer la colonne de prix spot
-
-    # remplace "Spot_Price" si ta colonne a un autre nom
-
-    spot = df["Spot_Price"]
- 
-    # 3) Construire elec_price sous forme de dict {t: prix}
-
-    elec_price = {t: float(spot.iloc[t]) for t in range(len(spot))}
- 
-    # 4) Définir les bornes de dimensionnement de la batterie
-
+    # Bornes de dimensionnement batterie
     bounds = [
-
-        (0.0, 50.0),   # P_bat_max entre 0 et 50 MW (à ajuster)
-
-        (0.0, 200.0),  # E_bat_max entre 0 et 200 MWh (à ajuster)
-
+        (0.0, 50.0),   # P_bat_max entre 0 et 50 MW
+        (0.0, 200.0),  # E_bat_max entre 0 et 200 MWh
     ]
  
-    # 5) Lancer l'algorithme génétique
-
     best_x, best_f = genetic_algorithm(
-
         elec_price=elec_price,
-
         bounds=bounds,
-
-        pop_size=10,       # tu peux augmenter après les tests
-
-        n_generations=10,  # idem
-
+        pop_size=8,         # commence petit pour tester
+        n_generations=5,
         p_crossover=0.8,
-
         p_mutation=0.2,
-
         rng_seed=123,
-
     )
  
     print("\n=== Résultat final du GA ===")
-
     print(f"P_bat_max* = {best_x[0]:.3f} MW")
-
     print(f"E_bat_max* = {best_x[1]:.3f} MWh")
-
     print(f"Coût minimal ≈ {best_f:.2f}")
-
- 
