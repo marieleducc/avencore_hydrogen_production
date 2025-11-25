@@ -1,34 +1,62 @@
 """File to define the constants of the model"""
 
-dt = 1.0                     # durée d'un pas de temps en heures
+# ---- INPUT PARAMETERS ----
 
-# Paramètres économiques
-# prix_a_terme = 75   # Prix du contrat à terme pour 2024
-# phi = 0.1            # Pourcentage de la puissance du forward
-# c_el = 700000        # CAPEX électrolyseur (€/MW_el)
+techno = "PEM"             # Electrolyser technology: "AEL", "PEM", "SOEC"
+prix_H2 = 10               # Price of green H2 in €/kg
+P_electro_max = 100        # Electrolyser power in MW
+N = 20                     # Project lifetime (years)
+H2_target = 8_000_000     # Annual H2 production target (kg)
+Revente = "YES"            # "YES" if electricity resale is possible, "NO" otherwise
 
-prix_H2 = 10           # Prix du kg de H2 vert en €
-c_bat_P = 110_000     # CAPEX batterie puissance (€/MW)
-c_bat_E = 120_000     # CAPEX batterie énergie (€/MWh)
+# ---- MODEL CONSTANTS ----
 
-# Paramètres d'annuitisation
-r = 0.04              # taux d'actualisation
-N = 20                # durée de vie projet (années)
-alpha = r * (1 + r)**N / ((1 + r)**N - 1)   # facteur d'annuité
+dt = 1.0                     # Time step in hours
 
-# Paramètres techniques
-P_electro_max = 100     # Puissance de l'électrolyseur en MW
-eta_electro = 1       # rendement global électrolyseur
-eta_ch = 1         # rendement charge batterie
-eta_dis = 1        # rendement décharge batterie
+# Definition of electrolysis technologies
+technos_electro = {
+    "AEL": {
+        "capex": 900_000,    # €/MW
+        "rampe": 300,        # MW/h
+        "yield": 20          # kg H2 / MWh
+    },
 
-u_el_min = 0     # fraction minimale de charge
-u_el_max = 0.95    # fraction maximale de charge
+    "PEM": {
+        "capex": 1_400_000,
+        "rampe": 600,
+        "yield": 18
+    },
 
-r_el = 10         # rampe max électrolyseur (MW/h)
-SOC_min = 0.1      # SOC min (fraction)
-SOC_max = 0.95     # SOC max (fraction)
+    "SOEC": {
+        "capex": 2_500_000,
+        "rampe": 100,
+        "yield": 27
+    }
+}
+
+# Economic parameters
+c_bat_P = 110_000     # Battery power CAPEX (€/MW)
+c_bat_E = 120_000     # Battery energy CAPEX (€/MWh)
+c_electro = technos_electro[techno]["capex"]  # Electrolyser CAPEX (€/MW)
+r = 0.04              # Discount rate
+alpha = r * (1 + r)**N / ((1 + r)**N - 1)   # Annuity factor
+
+# Technical parameters
+eta_electro = 0.7     # Overall electrolyser efficiency
+eta_ch = 0.95         # Battery charging efficiency
+eta_dis = 0.9         # Battery discharging efficiency
+
+u_el_min = 0       # Minimum load fraction
+u_el_max = 0.95    # Maximum load fraction
+
+r_el = technos_electro[techno]["rampe"]  # Maximum electrolyser ramp rate (MW/h)
+SOC_min = 0.1      # Minimum SOC (State of Charge) (fraction)
+SOC_max = 0.95     # Maximum SOC (State of Charge) (fraction)
 
 # Données H2
-LHV_H2 = 55        # kWh/kg (PEM)
-H2_target = 10_000_000 # objectif annuel de production H2 (kg) à adapter
+YIELD_H2 = technos_electro[techno]["yield"]        # kg/kWh
+
+
+# Paramètres Prix à Terme
+# prix_a_terme = 75   # Prix du contrat à terme pour 2024
+# phi = 0.1            # Pourcentage de la puissance du forward

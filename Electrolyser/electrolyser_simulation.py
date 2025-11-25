@@ -25,8 +25,8 @@ def el_ramp_rule(m, t):
 # --- 3.8 H2 : relation puissance ↔ production ---
 def h2_production_rule(m, t):
     # P_electro (MW) * dt (h) = MWh
-    # MWh * 1000 / LHV_H2 (kWh/kg) = kg
-    return m.H2[t] == eta_electro * m.P_electro[t] * dt * 1000.0 / LHV_H2
+    # MWh * YIELD_H2 (MWh/kg) = kg
+    return m.H2[t] == YIELD_H2 * eta_electro * m.P_electro[t] * dt
 # model.H2Production = pyo.Constraint(model.T, rule=h2_production_rule)
 
 

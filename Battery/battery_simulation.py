@@ -21,7 +21,6 @@ def soc_upper_bound_rule(m, t):
     return m.SOC[t] <= SOC_max * m.E_bat_max
 # model.SOCUpperBound = pyo.Constraint(model.T, rule=soc_upper_bound_rule)
 
-
 # --- 3.4 Batterie : puissance max charge / décharge ---
 def p_ch_limit_rule(m, t):
     return m.P_ch[t] <= m.P_bat_max
