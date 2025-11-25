@@ -1,6 +1,6 @@
 """Files for the definition of the objectives"""
-from Data.constants import *
-from Data.loading import intensity_elec, price_elec
+from Resolution.constants import *
+from Resolution.loading import intensity_elec, price_elec
 
 # -- Helper : CAPEX annualisé --
 def capex_annual(m):

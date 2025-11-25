@@ -1,6 +1,6 @@
 """Files for the definition of the boundaries of the electrolyser"""
 import pyomo.environ as pyo
-from Data.constants import *
+from Resolution.constants import *
 
 # --- 3.6 Électrolyseur : plage de fonctionnement ---
 def el_min_rule(m, t):
