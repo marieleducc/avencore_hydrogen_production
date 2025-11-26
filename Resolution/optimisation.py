@@ -22,22 +22,11 @@ from Resolution.battery_simulation import *
 from Resolution.electrolyser_simulation import *
 from Resolution.cost_functions import *
 
-# ---- INPUT PARAMETERS ----
 
-techno = "PEM"             # Electrolyser technology: "AEL", "PEM", "SOEC"
-prix_H2 = 10               # Price of green H2 in €/kg
-P_electro_max = 100        # Electrolyser power in MW
-N = 20                     # Project lifetime (years)
-H2_target = 8_000_000     # Annual H2 production target (kg)
-Revente = "YES"            # "YES" if electricity resale is possible, "NO" otherwise
 
 def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
-    
-    constant_dic = modelConstants(techno,prix_H2,P_electro_max,N,H2_target,Revente)
-    for key, value in constant_dic.items():
-        globals()[key] = value
-        
-    model = pyo.ConcreteModel(techno,prix_H2,P_electro_max,N,H2_target,Revente)
+
+    model = pyo.ConcreteModel()
 
     # ---- Sets ----
     model.T = pyo.RangeSet(0, T-1)   # on utilise 0..T-1 pour faciliter les indices
@@ -125,7 +114,7 @@ def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
     EFFECTIVE_POWER      = MEAN_PWR_ELECTRO / MAX_PWR_ELECTRO * 100  # en %
 
     # === 🌱 HYDROGÈNE & CARBONE ===
-    H2_TOTAL             = sum(pyo.value(model.H2[t]) for t in model.T)
+    H2_TOTAL             = sum(pyo.value(model.H2[t]) for t in model.T)  # en kg
     CO2_TOTAL            = pyo.value(emissions_co2(model))
     CO2_INTENSITY        = CO2_TOTAL / H2_TOTAL
 
@@ -167,46 +156,3 @@ def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
     
     return output_dic, df
 
-def fmt(x):
-    """Format compact pour grands nombres : 1.2M, 7.5k, 9.3B ou 123.45."""
-    if abs(x) >= 1e9:
-        return f"{round(x)/1e9:.0f} B"
-    elif abs(x) >= 1e6:
-        return f"{round(x)/1e6:.0f} M"
-    elif abs(x) >= 1e3:
-        return f"{round(x)/1e3:.0f} k"
-    elif abs(x) >= 1e2:
-        return f"{round(x):.0f}"
-    elif abs(x) >= 1e1:
-        return f"{round(x):.0f}"
-    else:
-        return f"{x:.2f}"
-
-
-print("\n===  📥 PARAMÈTRES D'ENTRÉE ===")
-print("Puissance électrolyseur max (MW)     :", fmt(MAX_PWR_ELECTRO))
-print("Prix du kg de H2 (€)                 :", fmt(H2_PRICE))
-print("CAPEX batterie puissance (€)         :", fmt(CAPEX_BAT_POWER))
-print("CAPEX batterie énergie (€)           :", fmt(CAPEX_BAT_ENERGY))
-print("Durée de vie projet (années)         :", fmt(PROJECT_LIFETIME))
-print("Taux d'actualisation (%)             :", fmt(DISCOUNT_RATE))
-
-print("\n=== ⚙️ PARAMÈTRES TECHNIQUES ===")
-print("Puissance batterie optimale (MW)     :", fmt(MAX_PWR_BAT))
-print("Capacité batterie optimale (MWh)     :", fmt(MAX_CAPA_BAT))
-
-print("\n=== 🔧 PERFORMANCE ÉLECTROLYSEUR ===")
-print("Puissance moyenne électrolyseur (MW) :", fmt(MEAN_PWR_ELECTRO))
-print("Coût moyen d'électricité (€/MW)      :", fmt(ELEC_COST_MEAN))
-
-print("\n=== 🌱 HYDROGÈNE & CARBONE ===")
-print("Production H2 annuelle (kg)          :", fmt(H2_TOTAL))
-print("Intensité carbone moyenne (kg/kg)    :", fmt(CO2_INTENSITY_MEAN))
-print("Émissions CO₂ totales (T)            :", fmt(CO2_TOTAL / 1000))
-
-print("\n=== 💶 ÉCONOMIE ===")
-print("Chiffre d'affaire annuel (€)         :", fmt(CA_TOTAL))
-print("Coût total annuel (€)                :", fmt(TOTAL_COST))
-print("Bénéfice annuel (€)                  :", fmt(BENEF_ANNUAL))
-print("Cout de production de H2 optimisé (kg H2/€)              :", fmt(H2_COST_OPT))
-print(df.head())

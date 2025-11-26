@@ -2,7 +2,7 @@
 import pandas as pd
 from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PATH = PROJECT_ROOT / "Data" / "data.csv"
+PATH = PROJECT_ROOT /"Resolution"/ "data.csv"
 
 def loading_function(path: str = PATH):
     df = pd.read_csv(path, sep=',')

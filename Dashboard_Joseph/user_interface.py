@@ -5,6 +5,11 @@ from dash import dcc, html, Input, Output, State
 import plotly.graph_objs as go
 import pandas as pd
 import numpy as np
+import sys, os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from Resolution.optimisation import optimisation_function
+
 
 # Initialisation de l'app Dash
 app = dash.Dash(__name__)
@@ -154,37 +159,18 @@ def run_optimization(n_clicks, techno, prix_h2, puissance_elec, nb_annees, objec
         empty_fig2.update_layout(title="Puissance vs Prix spot - Lancez l'optimisation")
         return html.Div(), empty_fig1, empty_fig2
     
-    # Appeler votre fonction d'optimisation
-    # P_bat_max, E_bat_max, df = optimisation_function(
-    #     techno, prix_h2, puissance_elec, nb_annees, objectif_prod, revente_elec
-    # )
-    
-    # SIMULATION DE DONNÉES (à remplacer par votre vraie fonction)
-    P_bat_max = np.random.uniform(2, 5)  # MW
-    E_bat_max = np.random.uniform(5, 15)  # MWh
-    
-    # Génération d'un DataFrame simulé (remplacer par votre df réel)
-    hours = pd.date_range('2024-01-01', periods=8760, freq='h')
-    df = pd.DataFrame({
-        'datetime': hours,
-        'prix_spot': np.random.uniform(20, 150, 8760),
-        'puissance_charge': np.random.uniform(0, P_bat_max, 8760),
-        'puissance_decharge': np.random.uniform(0, P_bat_max, 8760),
-        'puissance_electrolyser': np.random.uniform(0, puissance_elec, 8760),
-        'production_h2': np.random.uniform(0, 100, 8760)  # kg
-    })
-    
-    # Calculer le chiffre d'affaires
-    ca_total = prix_h2 * df['production_h2'].sum()
-    
+    output_dic, df = optimisation_function(
+         techno, prix_h2, puissance_elec, nb_annees, objectif_prod, revente_elec
+    )
+     
     # KPIs
     kpi_content = html.Div([
         html.H2("Résultats de l'optimisation", style={'color': '#2c3e50', 'marginBottom': 20}),
         html.Div([
             html.Div([
                 html.H3("Batterie installée", style={'color': '#34495e'}),
-                html.P(f"Puissance : {P_bat_max:.2f} MW", style={'fontSize': '18px', 'margin': '5px 0'}),
-                html.P(f"Capacité : {E_bat_max:.2f} MWh", style={'fontSize': '18px', 'margin': '5px 0'}),
+                html.P(f"Puissance : {output_dic['MAX_PWR_BAT']:.2f} MW", style={'fontSize': '18px', 'margin': '5px 0'}),
+                html.P(f"Capacité : {output_dic['MAX_CAPA_BAT']:.2f} MWh", style={'fontSize': '18px', 'margin': '5px 0'}),
             ], style={
                 'width': '48%', 
                 'display': 'inline-block', 
@@ -196,9 +182,9 @@ def run_optimization(n_clicks, techno, prix_h2, puissance_elec, nb_annees, objec
             
             html.Div([
                 html.H3("Performance économique", style={'color': '#34495e'}),
-                html.P(f"Production H2 annuelle : {df['production_h2'].sum() / 1000:.2f} tonnes", 
+                html.P(f"Production H2 annuelle : {output_dic['H2_TOTAL'] / 1000:.2f} tonnes", 
                        style={'fontSize': '18px', 'margin': '5px 0'}),
-                html.P(f"Chiffre d'affaires total : {ca_total / 1e6:.2f} M€", 
+                html.P(f"Chiffre d'affaires total : {output_dic['CA_TOTAL'] / 1e6:.2f} M€", 
                        style={'fontSize': '18px', 'margin': '5px 0', 'fontWeight': 'bold', 'color': '#27ae60'}),
             ], style={
                 'width': '48%', 
@@ -211,14 +197,14 @@ def run_optimization(n_clicks, techno, prix_h2, puissance_elec, nb_annees, objec
     ])
     
     # Graphique 1 : Journée moyenne
-    df_daily_avg = df.groupby(df['datetime'].dt.hour).mean()
+    df_daily_avg = df.groupby(df['Date'].dt.hour).mean()
     
     fig1 = go.Figure()
     
     # Prix spot sur axe secondaire
     fig1.add_trace(go.Scatter(
         x=df_daily_avg.index,
-        y=df_daily_avg['prix_spot'],
+        y=df_daily_avg['Spot_Price'],
         name='Prix spot',
         yaxis='y2',
         line=dict(color='#e74c3c', width=2)
@@ -226,21 +212,21 @@ def run_optimization(n_clicks, techno, prix_h2, puissance_elec, nb_annees, objec
     
     fig1.add_trace(go.Scatter(
         x=df_daily_avg.index,
-        y=df_daily_avg['puissance_charge'],
+        y=df_daily_avg['P_ch'],
         name='Puissance charge',
         line=dict(color='#3498db', width=2)
     ))
     
     fig1.add_trace(go.Scatter(
         x=df_daily_avg.index,
-        y=df_daily_avg['puissance_decharge'],
+        y=df_daily_avg['P_dis'],
         name='Puissance décharge',
         line=dict(color='#f39c12', width=2)
     ))
     
     fig1.add_trace(go.Scatter(
         x=df_daily_avg.index,
-        y=df_daily_avg['puissance_electrolyser'],
+        y=df_daily_avg['P_electro'],
         name='Puissance électrolyseur',
         line=dict(color='#2ecc71', width=2)
     ))
@@ -259,16 +245,16 @@ def run_optimization(n_clicks, techno, prix_h2, puissance_elec, nb_annees, objec
     fig2 = go.Figure()
     
     fig2.add_trace(go.Scatter(
-        x=df['prix_spot'],
-        y=df['puissance_charge'],
+        x=df['Spot_Price'],
+        y=df['P_ch'],
         mode='markers',
         name='Charge',
         marker=dict(color='#3498db', size=4, opacity=0.5)
     ))
     
     fig2.add_trace(go.Scatter(
-        x=df['prix_spot'],
-        y=df['puissance_decharge'],
+        x=df['Spot_price'],
+        y=df['P_dis'],
         mode='markers',
         name='Décharge',
         marker=dict(color='#f39c12', size=4, opacity=0.5)

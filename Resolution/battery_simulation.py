@@ -1,7 +1,8 @@
 """Function definition for the boundaries of BESS"""
 import pyomo.environ as pyo
-from Resolution.constants import *
-from Resolution.loading import *
+from constants import *
+from loading import *
+
 
 def soc_dyn_rule(m, t):
     if t == T-1:
