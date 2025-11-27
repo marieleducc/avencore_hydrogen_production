@@ -10,7 +10,7 @@ def soc_dyn_rule(m, t):
     return m.SOC[t+1] == m.SOC[t] + eta_ch * m.P_ch[t] * dt - eta_dis * m.P_dis[t] * dt
 
 # model.SOCdyn = pyo.Constraint(model.T, rule=soc_dyn_rule)
-
+# thibaud
 
 # --- 3.3 Batterie : bornes SOC ---
 def soc_lower_bound_rule(m, t):
