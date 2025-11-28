@@ -125,7 +125,7 @@ def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
     MEAN_PWR_ELECTRO     = sum(pyo.value(model.P_electro[t]) for t in model.T) / len(model.T)
     TOTAL_ENE_ELECTRO    = sum(pyo.value(model.P_electro[t]) for t in model.T) * C["dt"]
     ELEC_COST_MEAN       = sum(price_elec[t] * pyo.value(model.P_spot[t]) * C["dt"] for t in model.T) / TOTAL_ENE_ELECTRO
-    EFFECTIVE_TIME       = TOTAL_ENE_ELECTRO / (MAX_PWR_ELECTRO * len(model.T)* C["dt"]) * 100  # en %
+    EFFECTIVE_TIME       = TOTAL_ENE_ELECTRO / MAX_PWR_ELECTRO  # en heures
     EFFECTIVE_POWER      = MEAN_PWR_ELECTRO / MAX_PWR_ELECTRO * 100  # en %
 
     # === 🌱 HYDROGÈNE & CARBONE ===
