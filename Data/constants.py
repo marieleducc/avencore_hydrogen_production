@@ -1,34 +1,29 @@
 """File to define the constants of the model"""
 
-dt = 1.0                     # durée d'un pas de temps en heures
+dt: float = 1.0 # Time step
 
-# Paramètres économiques
-# prix_a_terme = 75   # Prix du contrat à terme pour 2024
-# phi = 0.1            # Pourcentage de la puissance du forward
-# c_el = 700000        # CAPEX électrolyseur (€/MW_el)
+H2_PRICE: float = 10.0 # Price of green H2
+CAPEX_PWR_BESS: float = 110_000.0 # Power CAPEX of the BESS (€/MW)
+CAPEX_EN_BESS: float = 120_000.0 # Energy CAPEX of the BESS(€/MWh)
 
-prix_H2 = 10           # Prix du kg de H2 vert en €
-c_bat_P = 110_000     # CAPEX batterie puissance (€/MW)
-c_bat_E = 120_000     # CAPEX batterie énergie (€/MWh)
+# Annuity parameters
+r: float = 0.04 # Actualisation rate
+N: int = 20 # Project length (years)
+ALPHA: float = r * (1 + r)**N / ((1 + r)**N - 1) # Annuity factor
 
-# Paramètres d'annuitisation
-r = 0.04              # taux d'actualisation
-N = 20                # durée de vie projet (années)
-alpha = r * (1 + r)**N / ((1 + r)**N - 1)   # facteur d'annuité
+# Technical parameters
+ELECTRO_MAX_PWR: float = 100.0 # Electrolyser power (MW)
+ELECTRO_YIELD: float = 1.0 # Global yield of the electrolyser
+CHARGE_YIELD: float = 1.0 # Charge yield of the BESS
+DISCHARGE_YIELD: float = 1.0 # Discharge yield of the BESS
 
-# Paramètres techniques
-P_electro_max = 100     # Puissance de l'électrolyseur en MW
-eta_electro = 1       # rendement global électrolyseur
-eta_ch = 1         # rendement charge batterie
-eta_dis = 1        # rendement décharge batterie
+U_ELECTRO_MIN: float = 0.0 # Minimal fraction of charge
+U_ELECTRO_MAX: float = 0.95 # Maximal fraction of charge
 
-u_el_min = 0     # fraction minimale de charge
-u_el_max = 0.95    # fraction maximale de charge
+RAMP_ELECTRO: float = 10.0 # Maximal ramp electrolyser (MW/h)        # rampe max électrolyseur (MW/h)
+MIN_SOC: float = 0.1 # Min SOC (fraction)
+MAX_SOC: float = 0.95 # Max SOC (fraction)
 
-r_el = 10         # rampe max électrolyseur (MW/h)
-SOC_min = 0.1      # SOC min (fraction)
-SOC_max = 0.95     # SOC max (fraction)
-
-# Données H2
-LHV_H2 = 55        # kWh/kg (PEM)
-H2_target = 10_000_000 # objectif annuel de production H2 (kg) à adapter
+# Hydrogen data
+LHV_H2: float = 55.0 # kWh/kg (PEM)
+H2_TARGET: float = 10_000_000.0 # Annual H2 production target

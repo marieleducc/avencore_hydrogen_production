@@ -1,29 +1,31 @@
 """Files for the definition of the objectives"""
-from Data.constants import *
-from Data.loading import intensity_elec, price_elec
+from Data.constants import (
+    ALPHA, 
+    CAPEX_PWR_BESS, 
+    CAPEX_EN_BESS, 
+    dt,
 
-# -- Helper : CAPEX annualisé --
+    )
+from Data.loading import CO2_INTENSITY, ELEC_PRICE
+
+# -----Annualised CAPEX-------------------------------
 def capex_annual(m):
-    return alpha * (c_bat_P * m.P_bat_max + c_bat_E * m.E_bat_max)
+    return ALPHA * (CAPEX_PWR_BESS * m.P_bat_max + CAPEX_EN_BESS * m.E_bat_max)
 
-# -- Helper : coût électricité --
+# -----Electricity price-----------------------------
 def cout_elec(m):
     return sum(
-        price_elec[t] * m.P_spot[t] * dt
-        # (prix_a_terme * phi * P_electro_max + price_elec[t] * m.P_spot[t]) * dt
+        ELEC_PRICE[t] * m.P_spot[t] * dt
         for t in m.T
     )
 
-# -- Helper : émissions de CO2 --
+# ----CO2 Emissions----------------------------------
 def emissions_co2(m):
     return sum(
-        intensity_elec[t] * m.P_spot[t] * dt
+        CO2_INTENSITY[t] * m.P_spot[t] * dt
         for t in m.T
     )
 
-
-# -- Objectif : coût total annuel --
+# ----Annual total cost------------------------------
 def objective_rule(m):
     return capex_annual(m) + cout_elec(m)
- 
-# model.Obj = pyo.Objective(rule=objective_rule, sense=pyo.minimize)
