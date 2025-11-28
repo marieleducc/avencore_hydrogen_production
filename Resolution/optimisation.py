@@ -16,13 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Data.constants import (  # noqa: E402
-    H2_PRICE, 
-    N,
-    r,
-    ELECTRO_MAX_PWR,
-    CAPEX_PWR_BESS,
-    CAPEX_EN_BESS
-
+    H2_PRICE
 )
 from Data.loading import (  # noqa: E402
     df,
@@ -116,18 +110,18 @@ RES_MAX_CAPA_BAT = fmt(pyo.value(model.E_bat_max))
 
 # ------Electrolyser performance------------------------
 RES_MEAN_PWR_ELECTRO = fmt(sum(pyo.value(model.P_electro[t]) for t in model.T) / len(model.T))
-RES_TOTAL_PWR_ELECTRO = fmt(sum(pyo.value(model.P_electro[t]) for t in model.T))
+RES_TOTAL_PWR_ELECTRO = sum(pyo.value(model.P_electro[t]) for t in model.T)
 RES_ELEC_COST_MEAN = fmt(pyo.value(cout_elec(model)) / RES_TOTAL_PWR_ELECTRO)
 
 # ------Carbon and H2-----------------------------------
-RES_H2_TOTAL = fmt(sum(pyo.value(model.H2[t]) for t in model.T))
-RES_CO2_TOTAL = fmt(pyo.value(emissions_co2(model)))
+RES_H2_TOTAL = sum(pyo.value(model.H2[t]) for t in model.T)
+RES_CO2_TOTAL = pyo.value(emissions_co2(model))
 RES_CO2_INTENSITY_MEAN = fmt(RES_CO2_TOTAL / (RES_H2_TOTAL*1000))
 
 # ------Financial parameters----------------------------
-RES_TOTAL_COST = fmt(pyo.value(model.Obj))
+RES_TOTAL_COST = pyo.value(model.Obj)
 RES_LCOH_OPT = fmt(RES_TOTAL_COST / RES_H2_TOTAL)
-RES_CA_TOTAL = fmt(RES_H2_TOTAL * H2_PRICE)
+RES_CA_TOTAL = RES_H2_TOTAL * H2_PRICE
 RES_BENEF_ANNUAL = fmt(RES_CA_TOTAL - RES_TOTAL_COST)
 
 # ------Including the results in the dataset----------
