@@ -77,13 +77,13 @@ app.layout = html.Div([
     
     html.Div([
         html.Div([
-            html.Label("Objectif de production annuelle H2 (tonnes)", style={'fontWeight': 'bold'}),
+            html.Label("Objectif de production annuelle H2 (kg)", style={'fontWeight': 'bold'}),
             dcc.Input(
                 id='objectif-production',
                 type='number',
-                value=10000,
+                value=10_000_000,
                 min=0,
-                step=500,
+                step=1_000_000,
                 style={'width': '100%'}
             )
         ], style={'width': '48%', 'display': 'inline-block', 'marginRight': '4%'}),
@@ -96,7 +96,7 @@ app.layout = html.Div([
                     {'label': 'OUI', 'value': 'YES'},
                     {'label': 'NON', 'value': 'NO'}
                 ],
-                value='YES',
+                value='NO',
                 inline=True,
                 style={'marginTop': 8}
             )
@@ -253,7 +253,7 @@ def run_optimization(n_clicks, techno, prix_h2, puissance_elec, nb_annees, objec
     ))
     
     fig2.add_trace(go.Scatter(
-        x=df['Spot_price'],
+        x=df['Spot_Price'],
         y=df['P_dis'],
         mode='markers',
         name='Décharge',

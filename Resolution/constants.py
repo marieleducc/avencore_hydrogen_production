@@ -1,6 +1,3 @@
-
-from Dashboard_Joseph.user_interface import techno,prix_H2,P_electro_max,N,H2_target,Revente
-
 def modelConstants(techno,prix_H2,P_electro_max,N,H2_target,Revente):
     # ---- MODEL CONSTANTS ----
 
@@ -54,11 +51,14 @@ def modelConstants(techno,prix_H2,P_electro_max,N,H2_target,Revente):
         "c_electro": c_electro,           # Electrolyser CAPEX (€/MW)
         "r": r,                           # Discount rate
         "alpha": alpha,                   # Annuity factor
+        "dt": dt,                         # Time step (h)
+        "N": N,                           # Project lifetime (years)
 
         # === ⚙️ PARAMÈTRES TECHNIQUES ===
         "eta_electro": eta_electro,       # Electrolyser efficiency
         "eta_ch": eta_ch,                 # Battery charging efficiency
         "eta_dis": eta_dis,               # Battery discharging efficiency
+        "P_electro_max": P_electro_max,   # Maximum electrolyser power (MW)
 
         "u_el_min": u_el_min,             # Minimum load fraction
         "u_el_max": u_el_max,             # Maximum load fraction
@@ -68,7 +68,8 @@ def modelConstants(techno,prix_H2,P_electro_max,N,H2_target,Revente):
         "SOC_max": SOC_max,               # Maximum State of Charge
 
         # === 🌱 PARAMÈTRES HYDROGÈNE ===
-        "YIELD_H2": YIELD_H2,             # kg/kWh
+        "YIELD_H2": YIELD_H2,             # kg / MWh
+        "H2_target": H2_target,           # Annual H2 production target (kg)
     }
     return constant_dic
 
@@ -76,19 +77,3 @@ def modelConstants(techno,prix_H2,P_electro_max,N,H2_target,Revente):
 # prix_a_terme = 75   # Prix du contrat à terme pour 2024
     # phi = 0.1            # Pourcentage de la puissance du forward
     
-constant_dic = modelConstants(techno,prix_H2,P_electro_max,N,H2_target,Revente)
-dt = 1.0                     # Time step in hours
-c_bat_P = constant_dic["c_bat_P"]
-c_bat_E = constant_dic["c_bat_E"]
-c_electro = constant_dic["c_electro"]
-r = constant_dic["r"]
-alpha = constant_dic["alpha"]
-eta_electro = constant_dic["eta_electro"]
-eta_ch = constant_dic["eta_ch"]
-eta_dis = constant_dic["eta_dis"]
-u_el_min = constant_dic["u_el_min"]
-u_el_max = constant_dic["u_el_max"]
-r_el = constant_dic["r_el"]
-SOC_min = constant_dic["SOC_min"]
-SOC_max = constant_dic["SOC_max"]
-YIELD_H2 = constant_dic["YIELD_H2"]

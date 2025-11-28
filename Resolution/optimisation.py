@@ -25,7 +25,7 @@ from Resolution.cost_functions import *
 
 
 def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
-
+    C = modelConstants(techno, prix_H2, P_electro_max, N, H2_target, Revente)
     model = pyo.ConcreteModel()
 
     # ---- Sets ----
@@ -51,20 +51,35 @@ def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
     model.H2 = pyo.Var(model.T, domain=pyo.NonNegativeReals)           # production de H2 (kg)
 
     # ---- Constraints ----
-    model.PowerBalance = pyo.Constraint(model.T, rule=power_balance_rule)     # Power Balance
-    model.SOCdyn = pyo.Constraint(model.T, rule=soc_dyn_rule)                 # Dynamics of battery state of charge
-    model.SOCLowerBound = pyo.Constraint(model.T, rule=soc_lower_bound_rule)  # Lower Bound of battery SOC
-    model.SOCUpperBound = pyo.Constraint(model.T, rule=soc_upper_bound_rule)  # Upper Bound of battery SOC
-    model.PchLimit = pyo.Constraint(model.T, rule=p_ch_limit_rule)            # Charge Power Limit
-    model.PdisLimit = pyo.Constraint(model.T, rule=p_dis_limit_rule)          # Discharge Power Limit
-    model.PbatMax = pyo.Constraint(rule=p_bat_max)                            # Battery Power Installed Limit
-    model.EbatMax = pyo.Constraint(rule=e_bat_max)                            # Battery Energy Installed Limit
-    model.ElMin = pyo.Constraint(model.T, rule=el_min_rule)                   # Electrolyser Minimum Power
-    model.ElMax = pyo.Constraint(model.T, rule=el_max_rule)                   # Electrolyser Maximum Power
-    model.ElRamp = pyo.Constraint(model.T, rule=el_ramp_rule)                 # Electrolyser Ramp Constraint
-    model.H2Production = pyo.Constraint(model.T, rule=h2_production_rule)     # H2 Production Relation
-    model.H2Target = pyo.Constraint(rule=h2_target_rule)                      # H2 Annual Target
-    model.Obj = pyo.Objective(rule=objective_rule, sense=pyo.minimize)        # Objective Function : minimize capex and energy costs
+    
+    # Power Balance (m, t, C)
+    model.PowerBalance = pyo.Constraint(model.T, rule=lambda m, t: power_balance_rule(m, t, C))
+    # Battery SOC Dynamics (m, t, C)
+    model.SOCdyn = pyo.Constraint(model.T, rule=lambda m, t: soc_dyn_rule(m, t, C))
+    # Battery SOC lower bound (m, t, C)
+    model.SOCLowerBound = pyo.Constraint(model.T, rule=lambda m, t: soc_lower_bound_rule(m, t, C))
+    # Battery SOC upper bound (m, t, C)
+    model.SOCUpperBound = pyo.Constraint(model.T, rule=lambda m, t: soc_upper_bound_rule(m, t, C))
+    # Charge Power Limit (m, t, C)
+    model.PchLimit = pyo.Constraint(model.T, rule=lambda m, t: p_ch_limit_rule(m, t, C))
+    # Discharge Power Limit (m, t, C)
+    model.PdisLimit = pyo.Constraint(model.T, rule=lambda m, t: p_dis_limit_rule(m, t, C))
+    # Battery Power Installed Limit (m, C)
+    model.PbatMax = pyo.Constraint(rule=lambda m: p_bat_max(m, C))
+    # Battery Energy Installed Limit (m, C)
+    model.EbatMax = pyo.Constraint(rule=lambda m: e_bat_max(m, C))
+    # Electrolyser minimum load (m, t, C)
+    model.ElMin = pyo.Constraint(model.T, rule=lambda m, t: el_min_rule(m, t, C))
+    # Electrolyser maximum load (m, t, C)
+    model.ElMax = pyo.Constraint(model.T, rule=lambda m, t: el_max_rule(m, t, C))
+    # Electrolyser ramp constraint (m, t, C)
+    model.ElRamp = pyo.Constraint(model.T, rule=lambda m, t: el_ramp_rule(m, t, C))
+    # H2 production relation (m, t, C)
+    model.H2Production = pyo.Constraint(model.T, rule=lambda m, t: h2_production_rule(m, t, C))
+    # H2 annual target (m, C)
+    model.H2Target = pyo.Constraint(rule=lambda m: h2_target_rule(m, C))
+    # Objective function (m, C)
+    model.Obj = pyo.Objective(rule=lambda m: objective_rule(m, C), sense=pyo.minimize)
 
 
     # ---- Model Resolution ----
@@ -96,10 +111,10 @@ def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
     # === 📥 PARAMÈTRES D'ENTRÉE ===
     MAX_PWR_ELECTRO      = P_electro_max
     H2_PRICE             = prix_H2
-    CAPEX_BAT_POWER      = c_bat_P
-    CAPEX_BAT_ENERGY     = c_bat_E
-    PROJECT_LIFETIME     = N
-    DISCOUNT_RATE        = r * 100
+    CAPEX_BAT_POWER      = C["c_bat_P"]
+    CAPEX_BAT_ENERGY     = C["c_bat_E"]
+    PROJECT_LIFETIME     = C["N"]
+    DISCOUNT_RATE        = C["r"] * 100
 
     # === ⚙️ PARAMÈTRES TECHNIQUES ===
     MAX_PWR_BAT          = pyo.value(model.P_bat_max)
@@ -108,29 +123,35 @@ def optimisation_function(techno,prix_H2,P_electro_max,N,H2_target,Revente):
 
     # === 🔧 PERFORMANCE ÉLECTROLYSEUR ===
     MEAN_PWR_ELECTRO     = sum(pyo.value(model.P_electro[t]) for t in model.T) / len(model.T)
-    TOTAL_ENE_ELECTRO    = sum(pyo.value(model.P_electro[t]) for t in model.T) * dt
-    ELEC_COST_MEAN       = sum(price_elec[t] * pyo.value(model.P_spot[t]) * dt for t in model.T) / TOTAL_ENE_ELECTRO
-    EFFECTIVE_TIME       = TOTAL_ENE_ELECTRO / (MAX_PWR_ELECTRO * 8760) * 100  # en %
+    TOTAL_ENE_ELECTRO    = sum(pyo.value(model.P_electro[t]) for t in model.T) * C["dt"]
+    ELEC_COST_MEAN       = sum(price_elec[t] * pyo.value(model.P_spot[t]) * C["dt"] for t in model.T) / TOTAL_ENE_ELECTRO
+    EFFECTIVE_TIME       = TOTAL_ENE_ELECTRO / (MAX_PWR_ELECTRO * len(model.T)* C["dt"]) * 100  # en %
     EFFECTIVE_POWER      = MEAN_PWR_ELECTRO / MAX_PWR_ELECTRO * 100  # en %
 
     # === 🌱 HYDROGÈNE & CARBONE ===
     H2_TOTAL             = sum(pyo.value(model.H2[t]) for t in model.T)  # en kg
-    CO2_TOTAL            = pyo.value(emissions_co2(model))
+    CO2_TOTAL            = pyo.value(emissions_co2(model, C))
     CO2_INTENSITY        = CO2_TOTAL / H2_TOTAL
 
 
 
     # === 💶 ÉCONOMIE ===
 
-    CA_TOTAL             = H2_TOTAL * prix_H2 - sum(price_elec[t] * min(0, pyo.value(model.P_spot[t])) * dt for t in model.T)
-    CAPEX_COST           = pyo.value(capex_annual(model)) + c_electro * P_electro_max * alpha
-    ELEC_COST            = sum(price_elec[t] * max(0, pyo.value(model.P_spot[t])) * dt for t in model.T)
+    CA_TOTAL             = H2_TOTAL * prix_H2 - sum(price_elec[t] * min(0, pyo.value(model.P_spot[t])) * C["dt"] for t in model.T)
+    CAPEX_COST           = pyo.value(capex_annual(model, C)) + C["c_electro"] * P_electro_max * C["alpha"]
+    ELEC_COST            = sum(price_elec[t] * max(0, pyo.value(model.P_spot[t])) * C["dt"] for t in model.T)
     TOTAL_COST           = CAPEX_COST + ELEC_COST
     BENEF_ANNUAL         = CA_TOTAL - TOTAL_COST
     H2_COST              = TOTAL_COST / H2_TOTAL
 
 
     output_dic = {
+        # === ⚙️ PARAMÈTRES D'ENTRÉES ===
+        "H2_PRICE": H2_PRICE,
+        "CAPEX_BAT_POWER": CAPEX_BAT_POWER,
+        "CAPEX_BAT_ENERGY": CAPEX_BAT_ENERGY,
+        "PROJECT_LIFETIME": PROJECT_LIFETIME,
+        "DISCOUNT_RATE": DISCOUNT_RATE,
         # === ⚙️ PARAMÈTRES TECHNIQUES ===
         "MAX_PWR_BAT": MAX_PWR_BAT,
         "MAX_CAPA_BAT": MAX_CAPA_BAT,
