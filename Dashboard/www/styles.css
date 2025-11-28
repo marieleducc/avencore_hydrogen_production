@@ -3,7 +3,7 @@
 /* =====Brand variables===== */
 :root{
   --brand: #0F6E6E;
-  --brand-200: #169191; 
+  --brand-200: hsl(180, 74%, 33%); 
   --brand-50: rgba(15, 110, 110, 0.25); 
   --ink: #0E0E0E;
   --muted: #666A6D;
@@ -96,6 +96,20 @@
 .selectize-dropdown-content .option.selected{
   background-color: var(--brand);
   color: #fff;
+}
+
+/*Buttons*/
+.btn-action {
+    background-color: white; 
+    color: #0A1C63;
+    border: none;
+}
+
+/* Couleur au survol */
+.btn-action:hover {
+    background-color: #0A1C63; /* bleu plus foncé au hover */
+    color: white;
+    cursor: pointer;
 }
 
 /*Inputs focus*/
